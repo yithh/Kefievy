@@ -20,15 +20,50 @@ if "posted_photos" not in st.session_state:
 if "deepfake_photo" not in st.session_state:
     st.session_state.deepfake_photo = None
 
-# Model Loading Function
+# Add this class definition before your main Streamlit code
+class Meso4():
+    def __init__(self, learning_rate = 0.001):
+        self.model = self.init_model()
+        optimizer = tf.keras.optimizers.Adam(learning_rate = learning_rate)
+        self.model.compile(optimizer = optimizer,
+                          loss = 'binary_crossentropy',
+                          metrics = ['accuracy'])
+
+    def init_model(self):
+        x = tf.keras.layers.Input(shape = (256, 256, 3))
+
+        x1 = tf.keras.layers.Conv2D(8, (3, 3), padding='same', activation = 'relu')(x)
+        x1 = tf.keras.layers.BatchNormalization()(x1)
+        x1 = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), padding='same')(x1)
+
+        x2 = tf.keras.layers.Conv2D(8, (5, 5), padding='same', activation = 'relu')(x1)
+        x2 = tf.keras.layers.BatchNormalization()(x2)
+        x2 = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), padding='same')(x2)
+
+        x3 = tf.keras.layers.Conv2D(16, (5, 5), padding='same', activation = 'relu')(x2)
+        x3 = tf.keras.layers.BatchNormalization()(x3)
+        x3 = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), padding='same')(x3)
+
+        x4 = tf.keras.layers.Conv2D(16, (5, 5), padding='same', activation = 'relu')(x3)
+        x4 = tf.keras.layers.BatchNormalization()(x4)
+        x4 = tf.keras.layers.MaxPooling2D(pool_size=(4, 4), padding='same')(x4)
+
+        y = tf.keras.layers.Flatten()(x4)
+        y = tf.keras.layers.Dropout(0.5)(y)
+        y = tf.keras.layers.Dense(16)(y)
+        y = tf.keras.layers.LeakyReLU(alpha=0.1)(y)
+        y = tf.keras.layers.Dropout(0.5)(y)
+        y = tf.keras.layers.Dense(1, activation = 'sigmoid')(y)
+
+        return tf.keras.Model(inputs = x, outputs = y)
+
+# Then modify your model loading function
 @st.cache_resource
 def load_mesonet_model(weights_path):
     try:
-        if not os.path.exists(weights_path):
-            st.error(f"Model file not found at {weights_path}")
-            return None
-        model = tf.keras.models.load_model(weights_path)
-        return model
+        model = Meso4()
+        model.model.load_weights(weights_path)
+        return model.model
     except Exception as e:
         st.error(f"Error loading MesoNet model: {e}")
         return None
