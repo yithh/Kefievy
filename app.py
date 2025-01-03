@@ -123,7 +123,7 @@ def add_watermark(image_path, username):
         text_position = (10, img.size[1] - text_size[1] - 10)
 
         # Add semi-transparent background with proportional padding
-        padding = int(font_size * 0.5)  # Padding proportional to font size
+        padding = int(font_size * 0.5)
         rect_position = [
             text_position[0] - padding,
             text_position[1] - padding,
@@ -187,10 +187,6 @@ def main():
             selected_index = st.selectbox("Choose a photo to post:", range(len(photos)), format_func=lambda x: photo_files[x])
             selected_photo = photos[selected_index]
 
-            # Clear detection state if photo selection changes
-            if 'last_selected_photo' not in st.session_state or st.session_state.last_selected_photo != selected_photo:
-                clear_detection_state()
-                st.session_state.last_selected_photo = selected_photo
 
             if selected_photo:
                 # Display selected photo
