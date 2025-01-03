@@ -175,12 +175,17 @@ def main():
         # Photo Selection
         photo_dir = "images"
         os.makedirs(photo_dir, exist_ok=True)
-        photos = [os.path.join(photo_dir, f) for f in os.listdir(photo_dir) if f.endswith((".jpg", ".png"))]
+        # Create a sorted list of just the filenames
+        photo_files = sorted([f for f in os.listdir(photo_dir) if f.endswith((".jpg", ".png"))])
+        # Create the full paths list in the same order
+        photos = [os.path.join(photo_dir, f) for f in photo_files]
 
         if not photos:
             st.warning("No photos available in the 'images' directory.")
         else:
-            selected_photo = st.selectbox("Choose a photo to post:", photos)
+            # Show filenames in the selectbox but get the full path
+            selected_index = st.selectbox("Choose a photo to post:", range(len(photos)), format_func=lambda x: photo_files[x])
+            selected_photo = photos[selected_index]
 
             # Clear detection state if photo selection changes
             if 'last_selected_photo' not in st.session_state or st.session_state.last_selected_photo != selected_photo:
