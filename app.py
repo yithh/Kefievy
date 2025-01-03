@@ -109,7 +109,7 @@ def clear_detection_state():
 
 # Load Model
 if "mesonet_model" not in st.session_state:
-    st.session_state.mesonet_model = load_mesonet_model("./model/MesoNet_model.keras")
+    st.session_state.mesonet_model = load_mesonet_model("./model/MesoNet_model.h5")
 
 # Main UI
 def main():
