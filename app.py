@@ -24,6 +24,9 @@ if "deepfake_photo" not in st.session_state:
 @st.cache_resource
 def load_mesonet_model(weights_path):
     try:
+        if not os.path.exists(weights_path):
+            st.error(f"Model file not found at {weights_path}")
+            return None
         model = tf.keras.models.load_model(weights_path)
         return model
     except Exception as e:
@@ -113,6 +116,16 @@ if "mesonet_model" not in st.session_state:
 
 # Main UI
 def main():
+
+    required_dirs = ["images", "model"]
+    for dir_name in required_dirs:
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+            st.warning(f"Created missing directory: {dir_name}")
+
+    if not os.path.exists("profile.jpg"):
+        st.warning("Profile image not found. Please add a profile.jpg file.")
+
     # Sidebar
     username = st.sidebar.text_input("Username", value="user123")
     st.sidebar.image("profile.jpg", width=100, caption=f"{username}'s Profile")
