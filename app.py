@@ -1,5 +1,4 @@
 import os
-import time
 from datetime import datetime
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
@@ -217,18 +216,16 @@ def main():
                                 if watermarked_img:
                                     st.session_state.posted_photos.append({
                                         "image": watermarked_img,
-                                        "caption": f"Deepfake (Watermarked)"
+                                        "caption": f"{selected_photo} - Deepfake (Watermarked)"
                                     })
                                     st.success("Photo Posted with Watermark!")
                                     clear_detection_state()
-                                    time.sleep(1)
                                     st.rerun()
                         
                         with col2:
                             if st.button("Cancel Post"):
                                 st.info("Post Cancelled.")
                                 clear_detection_state()
-                                time.sleep(1)
                                 st.rerun()
                     else:
                         if st.button("Post Photo"):
@@ -246,7 +243,6 @@ def main():
                             })
                             st.success("Photo Posted Successfully!")
                             clear_detection_state()
-                            time.sleep(1)
                             st.rerun()
 
     # Right Column: Posted Photos
