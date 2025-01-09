@@ -5,13 +5,15 @@ from PIL import Image, ImageDraw, ImageFont
 import tensorflow as tf
 import numpy as np
 import base64
+import torch
+from transformers import ViTForImageClassification, ViTImageProcessor
 
 # Streamlit Setup
 st.set_page_config(page_title="Deepfake Detection", layout="wide")
 
 # Constants
 LABELS_LIST = ['Real', 'Fake']
-DEEPFAKE_THRESHOLD = 0.5
+DEEPFAKE_THRESHOLD = 0.6
 
 # Initialize Session State
 if "posted_photos" not in st.session_state:
@@ -19,7 +21,7 @@ if "posted_photos" not in st.session_state:
 if "deepfake_photo" not in st.session_state:
     st.session_state.deepfake_photo = None
 
-# Add this class definition before your main Streamlit code
+# Meso4 Model Class
 class Meso4():
     def __init__(self, learning_rate = 0.001):
         self.model = self.init_model()
@@ -67,6 +69,16 @@ def load_mesonet_model(weights_path):
         st.error(f"Error loading MesoNet model: {e}")
         return None
 
+@st.cache_resource
+def load_vit_model(hf_model_repo):
+    try:
+        processor = ViTImageProcessor.from_pretrained(hf_model_repo)
+        model = ViTForImageClassification.from_pretrained(hf_model_repo)
+        return processor, model
+    except Exception as e:
+        st.error(f"Error loading ViT model from Hugging Face: {e}")
+        return None, None
+
 # Image Processing Function
 def preprocess_image_meso(image_path):
     try:
@@ -75,6 +87,15 @@ def preprocess_image_meso(image_path):
         return np.expand_dims(img_array, axis=0)
     except Exception as e:
         st.error(f"Error preprocessing image: {e}")
+        return None
+
+def preprocess_image_vit(image_path, processor):
+    try:
+        image = Image.open(image_path).convert("RGB")
+        inputs = processor(image, return_tensors="pt")
+        return inputs
+    except Exception as e:
+        st.error(f"Error preprocessing image for ViT: {e}")
         return None
 
 # Inference Function
@@ -89,6 +110,25 @@ def is_deepfake_meso(image_path):
         return confidence >= DEEPFAKE_THRESHOLD, confidence
     except Exception as e:
         st.error(f"Error during inference: {e}")
+        return None, 0
+
+def is_deepfake_vit(image_path):
+    if not st.session_state.vit_model or not st.session_state.vit_processor:
+        st.warning("ViT model is not loaded.")
+        return None, 0
+
+    try:
+        inputs = preprocess_image_vit(image_path, st.session_state.vit_processor)
+        if inputs is None:
+            return None, 0
+
+        outputs = st.session_state.vit_model(**inputs)
+        logits = outputs.logits.detach().cpu().numpy()[0]
+        confidence = torch.sigmoid(torch.tensor(logits[1])).item()  # Assuming binary classification
+        is_fake = confidence >= DEEPFAKE_THRESHOLD
+        return is_fake, confidence
+    except Exception as e:
+        st.error(f"Error during ViT inference: {e}")
         return None, 0
 
 # Watermarking Function
@@ -137,16 +177,15 @@ def add_watermark(image_path, username):
         st.error(f"Error adding watermark: {e}")
         return None
 
-# Clear Detection State
-def clear_detection_state():
-    """Clear the detection state and related session variables"""
-    st.session_state.deepfake_photo = None
-    if 'last_selected_photo' in st.session_state:
-        del st.session_state.last_selected_photo
-
 # Load Model
 if "mesonet_model" not in st.session_state:
     st.session_state.mesonet_model = load_mesonet_model("./model/MesoNet_model.h5")
+
+if "vit_model" not in st.session_state or "vit_processor" not in st.session_state:
+    vit_repo = "yithh/ViT-DeepfakeDetection"
+    processor, model = load_vit_model(vit_repo)
+    st.session_state.vit_processor = processor
+    st.session_state.vit_model = model
 
 # Main UI
 def main():
@@ -161,6 +200,7 @@ def main():
         st.warning("Profile image not found. Please add a profile.jpg file.")
 
     # Sidebar
+    selected_model = st.sidebar.selectbox("Choose a Model for Detection", ["MesoNet", "ViT"])
     username = st.sidebar.text_input("Username", value="user123")
     st.sidebar.image("profile.jpg", width=100, caption=f"{username}'s Profile")
 
@@ -200,7 +240,7 @@ def main():
                 """, unsafe_allow_html=True)
 
                 # Perform deepfake detection
-                is_fake, confidence = is_deepfake_meso(selected_photo)
+                is_fake, confidence = is_deepfake_vit(selected_photo) if selected_model == "ViT" else is_deepfake_meso(selected_photo)
 
                 if is_fake is not None:
                     st.info(f"Confidence Score: {confidence:.2f}")
@@ -219,13 +259,11 @@ def main():
                                         "caption": f"{selected_photo} - Deepfake (Watermarked)"
                                     })
                                     st.success("Photo Posted with Watermark!")
-                                    clear_detection_state()
                                     st.rerun()
                         
                         with col2:
                             if st.button("Cancel Post"):
                                 st.info("Post Cancelled.")
-                                clear_detection_state()
                                 st.rerun()
                     else:
                         if st.button("Post Photo"):
@@ -242,7 +280,6 @@ def main():
                                 "caption": "Normal Post"
                             })
                             st.success("Photo Posted Successfully!")
-                            clear_detection_state()
                             st.rerun()
 
     # Right Column: Posted Photos
