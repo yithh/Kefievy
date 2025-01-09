@@ -200,7 +200,7 @@ def main():
         st.warning("Profile image not found. Please add a profile.jpg file.")
 
     # Sidebar
-    selected_model = st.sidebar.selectbox("Choose a Model for Detection", ["MesoNet", "ViT"])
+    selected_model = st.sidebar.selectbox("Choose a Model for Detection", ["ViT", "MesoNet"])
     username = st.sidebar.text_input("Username", value="user123")
     st.sidebar.image("profile.jpg", width=100, caption=f"{username}'s Profile")
 
